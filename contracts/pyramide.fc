@@ -1,0 +1,85 @@
+#include "imports/stdlib.fc";
+#include "imports/methods.fc";
+#include "imports/functions.fc";
+#include "imports/const.fc";
+#include "imports/storage.fc";
+#include "admin.fc";
+#include "user.fc";
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    load_data();
+
+    int op = in_msg_body~load_uint(32);
+    slice sender_adress = cs~load_msg_addr();
+
+    int is_admin = equal_slices(sender_adress, db::admin_addr);
+
+    if (op == op::user_deposit()) {
+        int days = in_msg_body~load_uint(32);
+        user::deposit(sender_adress, msg_value, days);
+        pack_data();
+        throw(0);
+    }
+
+    if (op == op::user_withdraw()) {
+        user::withdraw(sender_adress);
+        pack_data();
+        throw(0);
+    }
+
+    if (op == op::withdraw()) {
+        throw_if(0xfffd, is_admin == 0);
+        adm::withdraw(msg_value);
+        throw(0);
+    }
+
+    if (op == op::reset()) {
+        throw_if(0xfffd, is_admin == 0);
+        reset_data();
+        throw(0);
+    }
+}
+
+tuple get_users() method_id {
+    load_data();
+
+    tuple list = null();
+
+    cell d = db::users;
+    do {
+        (d, slice key, slice user, int found) = d.dict_delete_get_min(ADDRESS_SIZE);
+        if (found) {
+            (int wc, int address_hash) = unpack_address(key);
+            tuple t = empty_tuple();
+            t~tpush(pair(wc, address_hash)); ;; push tuple address together
+            t~tpush(user~load_uint(64)); ;; push now (deposit address time)
+            t~tpush(user~load_coins()); ;; push uer coins
+            list = cons(t,list);
+        }
+    } until (~ found);
+
+    return list;
+}
+
+tuple get_user(slice address) method_id {
+    load_data();
+
+    if(_is_user_exist(address) == 0) {
+        return null();
+    }
+
+    slice user = _get_user(address);
+
+    tuple t = empty_tuple();
+    t~tpush(user~load_uint(64)); ;; push now (deposit address time)
+    t~tpush(user~load_coins()); ;; push uer coins
+
+    return t;
+}

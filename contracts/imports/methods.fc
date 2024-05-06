@@ -1,0 +1,10 @@
+slice pack_address(slice address) inline {
+    (int wc, int address_hash) = parse_std_addr(address);
+    return begin_cell().store_int(wc, 8).store_uint(address_hash, 256).end_cell().begin_parse();
+}
+
+(int, int) unpack_address(slice address) inline {
+    int wc = address~load_int(8);
+    int address_hash = address~load_uint(256);
+    return (wc, address_hash);
+}

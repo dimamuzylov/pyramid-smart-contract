@@ -1,0 +1,14 @@
+int op::reset() asm "1001 PUSHINT";
+int op::withdraw() asm "1002 PUSHINT";
+int op::user_deposit() asm "1003 PUSHINT";
+int op::user_withdraw() asm "1004 PUSHINT";
+
+int exit::invalid_deposit() asm "2001 PUSHINT";
+int exit::invalid_withdraw() asm "2002 PUSHINT";
+int exit::invalid_deposit_time() asm "2003 PUSHINT";
+int exit::invalid_withdraw_time() asm "2004 PUSHINT";
+
+int oneton() asm "1000000000 PUSHINT";
+int fiftyton() asm "50000000000 PUSHINT";
+
+const int ADDRESS_SIZE = 264; ;; 256 + 8

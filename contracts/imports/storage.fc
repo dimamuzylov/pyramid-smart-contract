@@ -1,0 +1,41 @@
+#include "stdlib.fc";
+
+global slice db::admin_addr;
+global cell db::users;
+global int db::daily_percent;
+global int db::min_days; ;; min days to deposit freeze
+global int db::max_days; ;; max days to deposit freeze
+
+() pack_data() impure {
+    set_data(
+        begin_cell()
+        .store_slice(db::admin_addr)
+        .store_dict(db::users)
+        .store_uint(db::daily_percent, 32)
+        .store_uint(db::min_days, 32)
+        .store_uint(db::max_days, 32)
+        .end_cell()
+    );
+}
+
+() reset_data() impure {
+    set_data(
+        begin_cell()
+        .store_slice(db::admin_addr)
+        .store_dict(new_dict())
+        .store_uint(db::daily_percent, 32)
+        .store_uint(db::min_days, 32)
+        .store_uint(db::max_days, 32)
+        .end_cell()
+    );
+}
+
+() load_data() impure inline_ref {
+    slice ds = get_data().begin_parse();
+    db::admin_addr = ds~load_msg_addr();
+    db::users = ds~load_dict();
+    db::daily_percent = ds~load_uint(32);
+    db::min_days = ds~load_uint(32);
+    db::max_days = ds~load_uint(32);
+    ds.end_parse();
+}
