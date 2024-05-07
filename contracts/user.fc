@@ -15,8 +15,12 @@ int _is_user_exist(slice address) inline {
 }
 
 () user::deposit(slice address, int amount, int days) impure inline_ref {
-    throw_unless(exit::invalid_deposit(), amount == oneton() | (amount == fiftyton()) | (_is_user_exist(address) == -1));
-    throw_unless(exit::invalid_deposit_time(), days == db::min_days | (days == db::max_days));
+    throw_if(exit::invalid_deposit(), amount < oneton());
+    throw_if(exit::invalid_deposit(), amount > fiftyton());
+    throw_if(exit::invalid_deposit(), _is_user_exist(address) == -1);
+
+    throw_if(exit::invalid_deposit_time(), days < db::min_days);
+    throw_if(exit::invalid_deposit_time(), days > db::max_days);
 
     builder value = begin_cell()
         .store_int(now(), 64)
@@ -25,8 +29,8 @@ int _is_user_exist(slice address) inline {
     db::users~dict_set_builder(ADDRESS_SIZE, pack_address(address), value);
 }
 
-() user::withdraw(slice address) impure inline_ref {
-    throw_unless(exit::invalid_withdraw(), _is_user_exist(address) == -1);
+() user::withdraw(slice address) impure inline_ref {    
+    throw_if(exit::invalid_withdraw(), _is_user_exist(address) == 0);
 
     slice user = _get_user(address);
     int time = user~load_uint(64);
@@ -39,15 +43,20 @@ int _is_user_exist(slice address) inline {
     
     int prize_amount_in_precentage = days * db::daily_percent;
     int prize_amount = (amount * prize_amount_in_precentage) / 100;
+
+    int withdraw_amount = amount + prize_amount;
+
+    var [balance, _] = get_balance();
+    throw_unless(exit::lack_of_balance(), balance >= withdraw_amount);
     
     cell msg = begin_cell()
         .store_uint(0x18, 6)
         .store_slice(address)
-        .store_coins(amount + prize_amount)
+        .store_coins(withdraw_amount)
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .end_cell();
 
-    send_raw_message(msg, 0);
+    send_raw_message(msg, 3);
 
     db::users~dict_delete?(ADDRESS_SIZE, pack_address(address));
 }

@@ -1,7 +1,11 @@
 #include "imports/stdlib.fc";
 #include "imports/storage.fc";
+#include "imports/const.fc";
 
 () adm::withdraw(int amount) impure inline_ref {
+    var [balance, _] = get_balance();
+    throw_unless(exit::lack_of_balance(), balance >= amount);
+
     cell msg = begin_cell()
         .store_uint(0x18, 6)
         .store_slice(db::admin_addr)
@@ -9,5 +13,5 @@
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
         .end_cell();
 
-    send_raw_message(msg, 0);
+    send_raw_message(msg, 3);
 }
