@@ -30,7 +30,7 @@ describe('pyramide.fc contract tests', () => {
       Pyramide.createFromConfig(
         {
           admin_addr: adminWallet.address,
-          daily_percent: 0,
+          daily_percent: toNano(0),
           min_days: 7,
           max_days: 365,
         },

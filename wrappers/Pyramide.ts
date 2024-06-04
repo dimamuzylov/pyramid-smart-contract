@@ -5,15 +5,21 @@ import {
   Contract,
   contractAddress,
   ContractProvider,
+  Dictionary,
   Sender,
   SendMode,
 } from '@ton/core';
+import { Maybe } from '@ton/core/dist/utils/maybe';
 
 export type PyramideConfig = {
   admin_addr: Address;
-  daily_percent: number;
+  daily_percent: bigint;
   min_days: number;
   max_days: number;
+  /**
+   * [referrals_count, percent]
+   */
+  referrals_program?: [number, bigint][];
 };
 
 export class Pyramide implements Contract {
@@ -23,10 +29,39 @@ export class Pyramide implements Contract {
   ) {}
 
   static createFromConfig(config: PyramideConfig, code: Cell, workchain = 0) {
+    const referralProgramDict = Dictionary.empty<number, Cell>();
+    for (let i = 0; i < (config.referrals_program || []).length; i++) {
+      const [referrals_count, percent] = config.referrals_program![i];
+      const cell = beginCell()
+        .storeUint(referrals_count, 32)
+        .storeUint(percent, 64)
+        .endCell();
+      referralProgramDict.set(i, cell);
+    }
+
     const data = beginCell()
       .storeAddress(config.admin_addr) // store admin address
       .storeUint(0, 1) // store empty users
-      .storeUint(config.daily_percent, 32) // store daily percent
+      .storeDict(referralProgramDict, Dictionary.Keys.Uint(64), {
+        serialize: (src, builder) => {
+          const slice = src.asSlice();
+          const referrals_count = slice.loadUint(32);
+          const percent = slice.loadUint(64);
+
+          builder.storeUint(referrals_count, 32);
+          builder.storeUint(percent, 64);
+        },
+        parse: (src) => {
+          const referrals_count = src.loadUint(32);
+          const percent = src.loadUint(64);
+
+          return beginCell()
+            .storeUint(referrals_count, 32)
+            .storeUint(percent, 64)
+            .endCell();
+        },
+      }) // store referrals program
+      .storeUint(config.daily_percent, 64) // store daily percent
       .storeUint(config.min_days, 32) // store min days to deposit freeze
       .storeUint(config.max_days, 32) // store min days to deposit freeze
       .endCell();
@@ -46,12 +81,17 @@ export class Pyramide implements Contract {
     provider: ContractProvider,
     sender: Sender,
     value: bigint,
-    days: number
+    days: number,
+    refAddress?: Maybe<Address>
   ) {
     await provider.internal(sender, {
       value,
       sendMode: SendMode.PAY_GAS_SEPARATELY,
-      body: beginCell().storeUint(1003, 32).storeUint(days, 32).endCell(),
+      body: beginCell()
+        .storeUint(1003, 32)
+        .storeUint(days, 32)
+        .storeAddress(refAddress || null)
+        .endCell(),
     });
   }
 
@@ -100,13 +140,19 @@ export class Pyramide implements Contract {
       const wc = addrTuple.readNumber();
       const hash = addrTuple.readBigNumber();
 
-      const time = tuple.readNumber();
+      const unlockDate = tuple.readNumber();
       const coins = tuple.readNumber();
+      const days = tuple.readNumber();
+      const referralsCount = tuple.readNumber();
+      const referralAddress = tuple.readAddressOpt();
 
       users.push({
         address: Address.parse(wc + ':' + hash.toString(16).padStart(64, '0')),
-        time,
+        unlockDate,
         coins,
+        days,
+        referralsCount,
+        referralAddress,
       });
 
       if (list.remaining > 0) {
@@ -127,8 +173,11 @@ export class Pyramide implements Contract {
 
     return tuple
       ? {
-          time: tuple.readNumber(),
+          unlockDate: tuple.readNumber(),
           coins: tuple.readBigNumber(),
+          days: tuple.readNumber(),
+          referralsCount: tuple.readNumber(),
+          referralAddress: tuple.readAddressOpt(),
         }
       : null;
   }

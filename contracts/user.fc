@@ -10,11 +10,32 @@ slice _get_user(slice address) inline {
 }
 
 int _is_user_exist(slice address) inline {
+    if (address.slice_bits() == 2) {  ;; check if address is null
+        return 0;
+    }
     (slice value, int found) = db::users.dict_get?(ADDRESS_SIZE, pack_address(address));
     return found;
 }
 
-() user::deposit(slice address, int amount, int days) impure inline_ref {
+int _get_daily_percent(int referrals_count) method_id {
+    ~dump(referrals_count);
+    cell d = db::referrals_program;
+    do {
+        (d, slice key, slice value, int found) = d.dict_delete_get_max(64);
+        if(found) {
+            int value_referrals_count = value~load_uint(32);
+            int value_percent = value~load_uint(64);
+            if (referrals_count >= value_referrals_count) {
+                return value_percent;
+            }
+        }
+        
+    } until (~ found);
+
+    return db::daily_percent;
+}
+
+() user::deposit(slice address, int amount, int days, slice ref_address) impure inline_ref {
     throw_if(exit::invalid_deposit(), amount < oneton());
     throw_if(exit::invalid_deposit(), amount > fiftyton());
     throw_if(exit::invalid_deposit(), _is_user_exist(address) == -1);
@@ -23,9 +44,30 @@ int _is_user_exist(slice address) inline {
     throw_if(exit::invalid_deposit_time(), days > db::max_days);
 
     builder value = begin_cell()
-        .store_int(now(), 64)
+        .store_int(now() + days * 60 * 60 * 24, 64)
         .store_coins(amount)
-        .store_int(days, 32);
+        .store_int(days, 32)
+        .store_int(0, 32) ;; referrals count
+        .store_slice(ref_address);
+
+    if(_is_user_exist(ref_address) == -1) {
+        slice ref_user = _get_user(ref_address);
+        int ref_unlock_date = ref_user~load_uint(64);
+        int ref_amount = ref_user~load_coins();
+        int ref_days = ref_user~load_uint(32);
+        int ref_count = ref_user~load_uint(32);
+        slice ref_addr = ref_user~load_msg_addr();
+
+        builder ref_value = begin_cell()
+            .store_int(ref_unlock_date, 64)
+            .store_coins(ref_amount)
+            .store_int(ref_days, 32)
+            .store_int(ref_count + 1, 32)
+            .store_slice(ref_addr);
+
+        db::users~dict_replace_builder?(ADDRESS_SIZE, pack_address(ref_address), ref_value);
+    }
+
     db::users~dict_set_builder(ADDRESS_SIZE, pack_address(address), value);
 }
 
@@ -33,16 +75,16 @@ int _is_user_exist(slice address) inline {
     throw_if(exit::invalid_withdraw(), _is_user_exist(address) == 0);
 
     slice user = _get_user(address);
-    int time = user~load_uint(64);
+    int unlock_date = user~load_uint(64);
     int amount = user~load_coins();
     int days = user~load_uint(32);
+    int referrals_count = user~load_uint(32);
 
-    int freeze_time = time + days * 60 * 60 * 24; ;; user deposit time + days to freeze
-
-    throw_if(exit::invalid_withdraw_time(), freeze_time >= now());
+    throw_if(exit::invalid_withdraw_time(), unlock_date >= now());
     
-    int prize_amount_in_precentage = days * db::daily_percent;
-    int prize_amount = (amount * prize_amount_in_precentage) / 100;
+    int daily_percent = _get_daily_percent(referrals_count);
+    int prize_amount_in_precentage = days * daily_percent;
+    int prize_amount = (amount * prize_amount_in_precentage) / 100000000000;
 
     int withdraw_amount = amount + prize_amount;
 

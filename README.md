@@ -6,24 +6,36 @@
 
 ---
 
-## Pyramid parameters
+## Pyramid smart contract DB
 
-Pyramid parameters are unchanged and is set during deployment.
+`db::admin_addr` - slice. Admin address of smart contrast.
 
-`admin_addr` - Admin address to manage `withdraw` and `reset` methods of smart contract.
+`db::users` - cell.
 
-`daily_percent` - Percentage applying to user coins amount on each day.
+User model.
 
 ```
-percents = days * daily_percent;
-withdrawal_user_amount = (user_amount * percents) / 100;
+unlock_date - uint 32 bits. Date when user may do withdrawal.
+amount - coins. Amount of deposit.
+days - uint 32 bits. Days to freeze deposit.
+referrals_count - uint 32 bits. Referrals count which may increase daily percentage on withdrawal.
+referral_address - slice. Address who invited.
 ```
 
-`min_days` - Minimum days of deposit being freezed.
+`db::referrals_program` - cell.
 
-`max_days` - Maximum days of deposit being freezed.
+Contains.
 
----
+```
+referrals_count - uint 32. Which count of referrals user must do to increase daily percentage.
+percent - uint 64. Daily percentage depends on referrals count.
+```
+
+`db::daily_percent` - int. Percentage applying to user coins amount on each day.
+
+`db::min_days` - int. Minimum days of deposit being freezed.
+
+`db::max_days` - int. Maximum days of deposit being freezed.
 
 ## Pyramid smart contract getters
 
@@ -50,22 +62,45 @@ tuple -> [
 
 ## Pyramid restrictions
 
--   only `admin_addr` may do actions with `opcodes` (`op::reset`, `op::withdraw`).
+- only `admin_addr` may do actions with `opcodes` (`op::reset`, `op::withdraw`).
 
--   `user::deposit(slice address, int amount, int days)` may do deposit if `amount` not less than `1 TON` and not more than `50 TON`.
+- `user::deposit(slice address, int amount, int days slice ref_address)` may do deposit if `amount` not less than `1 TON` and not more than `50 TON`.
 
--   `user::deposit(slice address, int amount, int days)` may do deposit if `days` more than `min_days` and less than `min_days`.
+- `user::deposit(slice address, int amount, int days slice ref_address)` may do deposit if `days` more than `min_days` and less than `min_days`.
 
--   `user::withdraw` may do withdrawal if `freeze_time (user_time + user_days * 60 * 60 * 24)` is done.
+- `user::deposit(slice address, int amount, int days slice ref_address)` may increase user `referrals_count` only by `ref_address`.
+
+- `user::withdraw` may do withdrawal if `unlock_date (user_time + user_days * 60 * 60 * 24)` is done.
+
+---
+
+## Pyramid configuration
+
+Pyramid configuration are unchanged and is set during deployment.
+
+`admin_addr` - Admin address to manage `withdraw` and `reset` methods of smart contract.
+
+`daily_percent` - Percentage applying to user coins amount on each day.
+
+```
+percents = days * daily_percent;
+withdrawal_user_amount = (user_amount * percents) / 100;
+```
+
+`min_days` - Minimum days of deposit being freezed.
+
+`max_days` - Maximum days of deposit being freezed.
+
+`referrals_program` - To provide referrals program in array. [[5, toNano(3)]] - where 5 is count of referrals, 3 is percentage per day. By default there is no `referrals_program`.
 
 ---
 
 ## Project structure
 
--   `contracts` - source code of all the smart contracts of the project and their dependencies.
--   `wrappers` - wrapper classes (implementing `Contract` from ton-core) for the contracts, including any [de]serialization primitives and compilation functions.
--   `tests` - tests for the contracts.
--   `scripts` - scripts used by the project, mainly the deployment scripts.
+- `contracts` - source code of all the smart contracts of the project and their dependencies.
+- `wrappers` - wrapper classes (implementing `Contract` from ton-core) for the contracts, including any [de]serialization primitives and compilation functions.
+- `tests` - tests for the contracts.
+- `scripts` - scripts used by the project, mainly the deployment scripts.
 
 ---
 

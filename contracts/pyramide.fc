@@ -29,7 +29,8 @@
 
     if (op == op::user_deposit()) {
         int days = in_msg_body~load_uint(32);
-        user::deposit(sender_adress, msg_value, days);
+        slice ref_address = in_msg_body~load_msg_addr();
+        user::deposit(sender_adress, msg_value, days, ref_address);
         pack_data();
         return ();
     }
@@ -67,9 +68,12 @@ tuple get_users() method_id {
         if (found) {
             (int wc, int address_hash) = unpack_address(key);
             tuple t = empty_tuple();
-            t~tpush(pair(wc, address_hash)); ;; push tuple address together
-            t~tpush(user~load_uint(64)); ;; push now (deposit address time)
-            t~tpush(user~load_coins()); ;; push uer coins
+            t~tpush(pair(wc, address_hash)); ;; tuple address together
+            t~tpush(user~load_uint(64)); ;; unlock date
+            t~tpush(user~load_coins()); ;; deposit amount
+            t~tpush(user~load_uint(32)); ;; deposit days
+            t~tpush(user~load_uint(32)); ;; referrals count
+            t~tpush(user~load_msg_addr()); ;; referral address
             list = cons(t,list);
         }
     } until (~ found);
@@ -87,8 +91,11 @@ tuple get_user(slice address) method_id {
     slice user = _get_user(address);
 
     tuple t = empty_tuple();
-    t~tpush(user~load_uint(64)); ;; push now (deposit address time)
-    t~tpush(user~load_coins()); ;; push uer coins
+    t~tpush(user~load_uint(64)); ;; unlock date
+    t~tpush(user~load_coins()); ;; deposit amount
+    t~tpush(user~load_uint(32)); ;; deposit days
+    t~tpush(user~load_uint(32)); ;; referrals count
+    t~tpush(user~load_msg_addr()); ;; referral address
 
     return t;
 }
