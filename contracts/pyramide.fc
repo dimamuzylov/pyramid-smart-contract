@@ -100,6 +100,29 @@ tuple get_user(slice address) method_id {
     return t;
 }
 
+tuple get_config() method_id {
+    load_data();
+
+    tuple t = empty_tuple();
+    t~tpush(db::daily_percent);
+    t~tpush(db::min_days);
+    t~tpush(db::max_days);
+
+    tuple ref_p_t = empty_tuple();
+    cell d = db::referrals_program;
+    do {
+        (d, slice key, slice user, int found) = d.dict_delete_get_min(64);
+        if (found) {
+            ref_p_t~tpush(user~load_uint(32));
+            ref_p_t~tpush(user~load_uint(64));
+        }
+    } until (~ found);
+
+    t~tpush(ref_p_t);
+
+    return t;
+}
+
 int get_contract_balance() method_id {
     var [balance, _] = get_balance();
     return balance;

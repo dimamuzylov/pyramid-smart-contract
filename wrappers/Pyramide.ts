@@ -6,6 +6,7 @@ import {
   contractAddress,
   ContractProvider,
   Dictionary,
+  fromNano,
   Sender,
   SendMode,
 } from '@ton/core';
@@ -180,6 +181,32 @@ export class Pyramide implements Contract {
           referralAddress: tuple.readAddressOpt(),
         }
       : null;
+  }
+
+  async getConfig(provider: ContractProvider) {
+    const result = await provider.get('get_config', []);
+    const tuple = result.stack.readTuple();
+
+    const dailyPercent = fromNano(tuple.readNumber());
+    const minDays = tuple.readNumber();
+    const maxDays = tuple.readNumber();
+    let referralsProgramTuple = tuple.readTupleOpt();
+
+    const referralsProgram = [];
+
+    while (referralsProgramTuple?.remaining) {
+      referralsProgram.push({
+        referralsCount: referralsProgramTuple.readNumber(),
+        percent: fromNano(referralsProgramTuple.readBigNumber()),
+      });
+    }
+
+    return {
+      dailyPercent,
+      minDays,
+      maxDays,
+      referralsProgram,
+    };
   }
 
   async getBalance(provider: ContractProvider) {

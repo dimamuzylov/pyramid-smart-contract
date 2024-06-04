@@ -58,6 +58,20 @@ tuple -> [
 ]
 ```
 
+`get_config` - Returns pyramid configuration.
+
+```
+tuple -> [
+    [daily_percent]
+    [min_days]
+    [max_days]
+    referrals_program -> tuple -> [
+        [referrals_count]
+        [percent]
+    ]
+]
+```
+
 ---
 
 ## Pyramid restrictions

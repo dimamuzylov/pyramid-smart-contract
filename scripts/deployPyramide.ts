@@ -10,9 +10,16 @@ export async function run(provider: NetworkProvider) {
       Pyramide.createFromConfig(
         {
           admin_addr,
-          daily_percent: 3,
-          min_days: 7,
-          max_days: 365,
+          daily_percent: toNano(3),
+          min_days: 1,
+          max_days: 2,
+          referrals_program: [
+            [1, toNano(4)],
+            [2, toNano(5.5)],
+            [3, toNano(6.5)],
+            [4, toNano(7.5)],
+            [5, toNano(10)],
+          ],
         },
         await compile('Pyramide')
       )
