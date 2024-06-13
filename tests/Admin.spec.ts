@@ -137,4 +137,99 @@ describe('pyramide.fc contract tests', () => {
       exitCode: 65533,
     });
   });
+
+  it('admin should do refund to specific address', async () => {
+    const sender = await blockchain.treasury('sender');
+    const sendDeposit = await pyramide.sendUserDeposit(
+      sender.getSender(),
+      toNano('1'),
+      7
+    );
+
+    expect(await pyramide.getBalance()).toBeGreaterThan(toNano('1'));
+    expect(await pyramide.getUsers()).toHaveLength(1);
+    expect(sendDeposit.transactions).toHaveTransaction({
+      from: sender.address,
+      to: pyramide.address,
+      success: true,
+      value: toNano('1'),
+    });
+
+    const sendRefund = await pyramide.sendRefund(
+      adminWallet.getSender(),
+      [sender.address],
+      toNano('0.05')
+    );
+    console.log('admin should do refund to specific address');
+    printTransactionFees(sendRefund.transactions);
+
+    expect(await pyramide.getBalance()).toBeLessThan(toNano('1'));
+    expect(await pyramide.getUsers()).toHaveLength(0);
+    expect(sendRefund.transactions).toHaveTransaction({
+      from: pyramide.address,
+      to: sender.address,
+      success: true,
+      value: toNano('1'),
+    });
+  });
+
+  it('admin should do refund to all users', async () => {
+    for (let i = 0; i < 10; i++) {
+      const sender = await blockchain.treasury('sender' + i);
+      await pyramide.sendUserDeposit(sender.getSender(), toNano('1'), 7);
+    }
+
+    expect(await pyramide.getBalance()).toBeGreaterThan(toNano('9'));
+
+    const users = await pyramide.getUsers();
+
+    expect(await pyramide.getUsers()).toHaveLength(10);
+
+    const sendRefund = await pyramide.sendRefund(
+      adminWallet.getSender(),
+      users.map(({ address }) => address),
+      toNano('0.1')
+    );
+
+    console.log('admin should do refund to specific address');
+    printTransactionFees(sendRefund.transactions);
+
+    expect(await pyramide.getBalance()).toBeLessThan(toNano('1'));
+    expect(await pyramide.getUsers()).toHaveLength(0);
+  });
+
+  it('admin should got invalid error on refund', async () => {
+    const sender = await blockchain.treasury('sender');
+    const senderNotExist = await blockchain.treasury('senderNotExist');
+    await pyramide.sendUserDeposit(sender.getSender(), toNano('1'), 7);
+
+    const sendRefund = await pyramide.sendRefund(
+      adminWallet.getSender(),
+      [sender.address, senderNotExist.address],
+      toNano('0.05')
+    );
+
+    console.log('admin should got invalid error on refund');
+    printTransactionFees(sendRefund.transactions);
+
+    expect(sendRefund.transactions).toHaveTransaction({
+      exitCode: 2006,
+    });
+  });
+
+  it('not admin should got exit code on refund', async () => {
+    const notAdminWallet = await blockchain.treasury('notAdminWallet');
+    const sendRefund = await pyramide.sendRefund(
+      notAdminWallet.getSender(),
+      [notAdminWallet.address],
+      toNano('0.05')
+    );
+
+    console.log('not admin should got exit code on refund');
+    printTransactionFees(sendRefund.transactions);
+
+    expect(sendRefund.transactions).toHaveTransaction({
+      exitCode: 65533,
+    });
+  });
 });

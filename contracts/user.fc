@@ -1,21 +1,8 @@
 #include "imports/stdlib.fc";
 #include "imports/methods.fc";
-#include "imports/functions.fc";
 #include "imports/const.fc";
 #include "imports/storage.fc";
 
-slice _get_user(slice address) inline {
-    (slice value, int found) = db::users.dict_get?(ADDRESS_SIZE, pack_address(address));
-    return value;
-}
-
-int _is_user_exist(slice address) inline {
-    if (address.slice_bits() == 2) {  ;; check if address is null
-        return 0;
-    }
-    (slice value, int found) = db::users.dict_get?(ADDRESS_SIZE, pack_address(address));
-    return found;
-}
 
 int _get_daily_percent(int referrals_count) method_id {
     cell d = db::referrals_program;
@@ -37,7 +24,7 @@ int _get_daily_percent(int referrals_count) method_id {
 () user::deposit(slice address, int amount, int days, slice ref_address) impure inline_ref {
     throw_if(exit::invalid_deposit(), amount < oneton());
     throw_if(exit::invalid_deposit(), amount > fiftyton());
-    throw_if(exit::invalid_deposit(), _is_user_exist(address) == -1);
+    throw_if(exit::invalid_deposit(), is_user_exist(address) == -1);
 
     throw_if(exit::invalid_deposit_time(), days < db::min_days);
     throw_if(exit::invalid_deposit_time(), days > db::max_days);
@@ -49,8 +36,8 @@ int _get_daily_percent(int referrals_count) method_id {
         .store_int(0, 32) ;; referrals count
         .store_slice(ref_address);
 
-    if(_is_user_exist(ref_address) == -1) {
-        slice ref_user = _get_user(ref_address);
+    if(is_user_exist(ref_address) == -1) {
+        slice ref_user = filter_user(ref_address);
         int ref_unlock_date = ref_user~load_uint(64);
         int ref_amount = ref_user~load_coins();
         int ref_days = ref_user~load_uint(32);
@@ -71,9 +58,9 @@ int _get_daily_percent(int referrals_count) method_id {
 }
 
 () user::withdraw(slice address) impure inline_ref {    
-    throw_if(exit::invalid_withdraw(), _is_user_exist(address) == 0);
+    throw_if(exit::invalid_withdraw(), is_user_exist(address) == 0);
 
-    slice user = _get_user(address);
+    slice user = filter_user(address);
     int unlock_date = user~load_uint(64);
     int amount = user~load_coins();
     int days = user~load_uint(32);

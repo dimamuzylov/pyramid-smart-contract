@@ -1,3 +1,7 @@
+#include "./storage.fc";
+#include "./functions.fc";
+#include "./const.fc";
+
 slice pack_address(slice address) inline {
     (int wc, int address_hash) = parse_std_addr(address);
     return begin_cell().store_int(wc, 8).store_uint(address_hash, 256).end_cell().begin_parse();
@@ -7,4 +11,17 @@ slice pack_address(slice address) inline {
     int wc = address~load_int(8);
     int address_hash = address~load_uint(256);
     return (wc, address_hash);
+}
+
+slice filter_user(slice address) inline {
+    (slice value, int found) = db::users.dict_get?(ADDRESS_SIZE, pack_address(address));
+    return value;
+}
+
+int is_user_exist(slice address) inline {
+    if (address.slice_bits() == 2) {  ;; check if address is null
+        return 0;
+    }
+    (slice value, int found) = db::users.dict_get?(ADDRESS_SIZE, pack_address(address));
+    return found;
 }

@@ -48,6 +48,14 @@
         return ();
     }
 
+    if (op == op::refund()) {
+        throw_if(0xfffd, is_admin == 0);
+        cell addresses = in_msg_body~load_dict();
+        adm::refund(addresses);
+        pack_data();
+        return ();
+    }
+
     if (op == op::reset()) {
         throw_if(0xfffd, is_admin == 0);
         reset_data();
@@ -84,11 +92,11 @@ tuple get_users() method_id {
 tuple get_user(slice address) method_id {
     load_data();
 
-    if(_is_user_exist(address) == 0) {
+    if(is_user_exist(address) == 0) {
         return null();
     }
 
-    slice user = _get_user(address);
+    slice user = filter_user(address);
 
     tuple t = empty_tuple();
     t~tpush(user~load_uint(64)); ;; unlock date

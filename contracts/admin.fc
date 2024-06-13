@@ -1,6 +1,7 @@
 #include "imports/stdlib.fc";
 #include "imports/storage.fc";
 #include "imports/const.fc";
+#include "imports/methods.fc";
 
 () adm::withdraw(int amount) impure inline_ref {
     var [balance, _] = get_balance();
@@ -14,4 +15,28 @@
         .end_cell();
 
     send_raw_message(msg, 3);
+}
+
+() adm::refund(cell addresses) impure inline_ref {
+    cell d = addresses;
+    do {
+        (d, slice key, slice address, int found) = d.dict_delete_get_min(64);
+        if (found) {
+            throw_if(exit::invalid_refund(), is_user_exist(address) == 0);
+
+            slice user = filter_user(address);
+            user~skip_bits(64);
+            int amount = user~load_coins();
+
+            cell msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(address)
+                .store_coins(amount)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .end_cell();
+
+            send_raw_message(msg, 3);
+            db::users~dict_delete?(ADDRESS_SIZE, pack_address(address));
+        }
+    } until (~ found);
 }

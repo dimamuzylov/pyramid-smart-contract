@@ -76,7 +76,7 @@ tuple -> [
 
 ## Pyramid restrictions
 
-- only `admin_addr` may do actions with `opcodes` (`op::reset`, `op::withdraw`).
+- only `admin_addr` may do actions with `opcodes` (`op::reset`, `op::withdraw`, `op::refund`).
 
 - `user::deposit(slice address, int amount, int days slice ref_address)` may do deposit if `amount` not less than `1 TON` and not more than `50 TON`.
 

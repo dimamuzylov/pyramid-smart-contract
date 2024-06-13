@@ -129,6 +129,36 @@ export class Pyramide implements Contract {
     });
   }
 
+  async sendRefund(
+    provider: ContractProvider,
+    sender: Sender,
+    addresses: Address[],
+    fees: bigint
+  ) {
+    const addressesDict = Dictionary.empty<number, Cell>();
+
+    for (let i = 0; i < addresses.length; i++) {
+      addressesDict.set(i, beginCell().storeAddress(addresses[i]).endCell());
+    }
+
+    await provider.internal(sender, {
+      value: fees,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell()
+        .storeUint(1005, 32)
+        .storeDict(addressesDict, Dictionary.Keys.Uint(64), {
+          serialize: (src, builder) => {
+            const slice = src.asSlice();
+            builder.storeAddress(slice.loadAddress());
+          },
+          parse: (src) => {
+            return beginCell().storeAddress(src.loadAddress()).endCell();
+          },
+        })
+        .endCell(),
+    });
+  }
+
   async getUsers(provider: ContractProvider) {
     const result = await provider.get('get_users', []);
     const users = [];
