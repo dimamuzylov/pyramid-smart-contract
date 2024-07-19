@@ -175,7 +175,6 @@ export class Pyramide implements Contract {
       const coins = tuple.readNumber();
       const days = tuple.readNumber();
       const referralsCount = tuple.readNumber();
-      const referralAddress = tuple.readAddressOpt();
 
       users.push({
         address: Address.parse(wc + ':' + hash.toString(16).padStart(64, '0')),
@@ -183,7 +182,6 @@ export class Pyramide implements Contract {
         coins,
         days,
         referralsCount,
-        referralAddress,
       });
 
       if (list.remaining > 0) {
@@ -208,7 +206,6 @@ export class Pyramide implements Contract {
           coins: tuple.readBigNumber(),
           days: tuple.readNumber(),
           referralsCount: tuple.readNumber(),
-          referralAddress: tuple.readAddressOpt(),
         }
       : null;
   }

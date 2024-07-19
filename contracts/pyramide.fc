@@ -81,7 +81,6 @@ tuple get_users() method_id {
             t~tpush(user~load_coins()); ;; deposit amount
             t~tpush(user~load_uint(32)); ;; deposit days
             t~tpush(user~load_uint(32)); ;; referrals count
-            t~tpush(user~load_msg_addr()); ;; referral address
             list = cons(t,list);
         }
     } until (~ found);
@@ -103,7 +102,6 @@ tuple get_user(slice address) method_id {
     t~tpush(user~load_coins()); ;; deposit amount
     t~tpush(user~load_uint(32)); ;; deposit days
     t~tpush(user~load_uint(32)); ;; referrals count
-    t~tpush(user~load_msg_addr()); ;; referral address
 
     return t;
 }

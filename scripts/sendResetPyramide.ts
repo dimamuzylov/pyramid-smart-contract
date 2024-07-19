@@ -4,7 +4,7 @@ import { NetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {
   const address = Address.parse(
-    'EQAcWeGkhgaaaZiwUaIX8dArzvHa8_KzkhvpnhHQwaAh6hOw'
+    'EQBNDBuXa7ChuVjpa0XaZ7NPM9p-k_pwHBP6eLRIbQTyRsse'
   );
 
   const pyramide = provider.open(new Pyramide(address));
